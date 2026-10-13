@@ -1,0 +1,33 @@
+# Virtual Environments
+venv/
+.venv/
+env/
+
+# Secrets & Local Configs (NEVER commit these)
+.env
+*.env
+.env.local
+.env.*.local
+
+# ML Models & Weights (>100MB)
+backend/models/
+*.onnx
+*.bin
+*.safetensors
+*.pt
+
+# Generated Media & Local Database
+backend/static/audio/*.wav
+backend/static/images/*.png
+*.db
+*.sqlite3
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Python Cache & OS Junk
+__pycache__/
+*.py[cod]
+.DS_Store
