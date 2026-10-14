@@ -1,0 +1,191 @@
+[
+  {
+    "id": "shadow_court",
+    "title": "Court of Midnight & Ash",
+    "tagline": "Intrigue, desire, and betrayal beneath the fae moon.",
+    "tone": "ACOTAR / Dark Romantic Fantasy",
+    "default_voice": "af_sarah",
+    "initial_prose": "The candles in the Court of Midnight burn black, their smoke curling like whispered secrets into the vaulted obsidian ceiling. You arrived three nights ago bearing forged credentials and a stolen invitation — a mortal blade slipped between the ribs of a world that does not welcome your kind. Lady Vespera Nightshade has not yet acknowledged your presence, but you have felt her gaze like cold silk across the back of your neck every time you enter the grand hall. Tonight, the Autumn Masquerade begins. Every lord, every spy, every creature of shadow and hunger will be here. And somewhere beneath the revelry, the Ashen Relic pulses — waiting for whoever is bold enough to take it.",
+    "starting_lore": [
+      {
+        "name": "Lady Vespera Nightshade",
+        "category": "NPC",
+        "keywords": ["vespera", "lady", "nightshade", "spymaster", "raven-haired", "emerald", "fae"],
+        "content": "High-ranking fae noble and spymaster of the Court of Midnight. Calculating, dangerous, and drawn to audacity. She hunts the Ashen Relic for reasons she has not disclosed to anyone."
+      },
+      {
+        "name": "The Court of Midnight",
+        "category": "Location",
+        "keywords": ["court", "midnight", "palace", "obsidian", "fae court", "hall"],
+        "content": "A vast obsidian palace suspended between two mountain peaks in the fae realm. Governed by blood pacts, sensuous intrigue, and ruthless aristocratic politics. Mortals are not welcome — and rarely leave."
+      },
+      {
+        "name": "The Ashen Relic",
+        "category": "Relic",
+        "keywords": ["relic", "ashen", "artifact", "relic of ash", "ancient power"],
+        "content": "An ancient fae artifact said to grant dominion over shadow and memory. Its location within the palace is known only to the Court's inner circle — and whoever holds it commands the loyalty of every shadow-bound creature."
+      },
+      {
+        "name": "The Shadow Court",
+        "category": "Faction",
+        "keywords": ["shadow court", "court of shadows", "high-fae", "faction", "aristocracy"],
+        "content": "The ruling aristocratic faction of the fae realm. Governed by ancient blood pacts and sensuous intrigue. Membership is earned through cunning, beauty, or ruthless ambition — never through birth alone."
+      }
+    ],
+    "default_character": {
+      "name": "Kaelen",
+      "character_class": "Shadowblade",
+      "hp": 25,
+      "max_hp": 25,
+      "stats": { "STR": 12, "DEX": 16, "CON": 14, "INT": 11, "WIS": 13, "CHA": 15 },
+      "inventory": ["Forged Invitation", "Steel Dagger (concealed)", "Midnight Masquerade Mask", "Pouch of 20 Gold"],
+      "notes": "A mortal spy who infiltrated the Court of Midnight under a false identity. Skilled in deception and shadow-work. Has a complicated history with the fae."
+    },
+    "cutscene_slides": [
+      {
+        "slide_number": 1,
+        "narration": "Beyond the mortal veil, where moonlight turns to ash and stars bleed silver, the Court of Midnight rises from obsidian peaks. Its towers pierce the sky like black thorns, and within its halls, desire and danger are indistinguishable. You have crossed the border that no mortal should cross — and there is no turning back.",
+        "image_prompt": "gothic fae palace of black obsidian rising from mountain peaks at night, twin moons overhead, silver mist, dark romantic fantasy, cinematic wide shot, 8k, dramatic lighting, ethereal atmosphere",
+        "camera_motion": "kenburns-zoom-in"
+      },
+      {
+        "slide_number": 2,
+        "narration": "The grand masquerade hall shimmers with a thousand black candles, their flames burning cold and violet. Creatures of impossible beauty move through the crowd — fae lords in silk and shadow, their eyes ancient and hungry. At the center of it all, a woman in emerald and midnight turns, and for one breathless moment, her gaze finds yours across the room.",
+        "image_prompt": "opulent dark fae masquerade ballroom, black candles with violet flames, beautiful fae nobles in elaborate dark gowns and masks, a raven-haired woman in emerald dress turning to look, cinematic, 8k, dark romantic fantasy",
+        "camera_motion": "kenburns-pan-right"
+      },
+      {
+        "slide_number": 3,
+        "narration": "Somewhere beneath the revelry, beneath the laughter and the lies, the Ashen Relic pulses with a heartbeat that is not quite alive. You can feel it — a cold pressure behind your sternum, a whisper that knows your name. The Court of Midnight has been waiting for someone like you. The question is whether you will survive long enough to claim what you came for.",
+        "image_prompt": "close up of a glowing dark artifact pulsing with ash-grey light on a stone altar, surrounded by shadow tendrils, ominous atmosphere, dark fantasy, cinematic macro shot, 8k",
+        "camera_motion": "kenburns-tilt-up"
+      }
+    ]
+  },
+  {
+    "id": "wyrmwood_veil",
+    "title": "The Sunken Veil of Wyrmwood",
+    "tagline": "The forest breathes. The rot remembers. The dragon sleeps — for now.",
+    "tone": "Grimdark Eldritch Survival Horror",
+    "default_voice": "bm_fable",
+    "initial_prose": "Three weeks ago, the village of Ashfen stopped sending ravens. The trade road through Wyrmwood Forest has been swallowed by something that grows faster than fire can burn it — a creeping black rot that turns bark to wet obsidian and fills the air with the smell of old graves. You were hired to find the missing survey team. You found their camp. You found their notes. You found what was left of their bodies, arranged in a spiral around a stone that should not exist this far from the old dragon cult ruins. The forest is watching you. It has been watching you since you crossed the first dead tree. And somewhere beneath the roots, something vast and ancient stirs in its sleep.",
+    "starting_lore": [
+      {
+        "name": "The Wyrmwood Rot",
+        "category": "Faction",
+        "keywords": ["rot", "wyrmwood", "black rot", "corruption", "blight", "spreading"],
+        "content": "A supernatural corruption spreading outward from the heart of Wyrmwood Forest. It transforms living matter into a wet, obsidian-like substance and appears to be guided by an intelligence. Survivors report hearing whispers from infected trees."
+      },
+      {
+        "name": "The Slumbering Wyrm",
+        "category": "NPC",
+        "keywords": ["wyrm", "dragon", "slumbering", "ancient", "cult", "sleeping god"],
+        "content": "An ancient dragon of immense power buried beneath Wyrmwood Forest, worshipped by a now-extinct cult. It has been dormant for three centuries but the rot suggests it is beginning to wake. Its dreams bleed into the forest as corruption."
+      },
+      {
+        "name": "Ashfen Village",
+        "category": "Location",
+        "keywords": ["ashfen", "village", "settlement", "missing", "silent"],
+        "content": "A small trading village on the edge of Wyrmwood Forest. Three weeks ago all communication ceased. The last known survivor was a cartographer named Mira Voss who fled south with severe rot-exposure symptoms."
+      },
+      {
+        "name": "The Spiral Stones",
+        "category": "Relic",
+        "keywords": ["spiral", "stones", "altar", "cult ruins", "dragon cult", "runes"],
+        "content": "Ancient ritual markers left by the Wyrmwood Dragon Cult. When arranged in a spiral pattern, they serve as a beacon to the Slumbering Wyrm. Finding them active means the cult — or something worse — has resumed the awakening ritual."
+      }
+    ],
+    "default_character": {
+      "name": "Sable",
+      "character_class": "Nightstalker",
+      "hp": 22,
+      "max_hp": 22,
+      "stats": { "STR": 13, "DEX": 15, "CON": 12, "INT": 14, "WIS": 16, "CHA": 10 },
+      "inventory": ["Crossbow & 12 Bolts", "Rot-Resistant Gloves", "Cartographer's Notes (partial)", "Torch x3", "Antitoxin Vial"],
+      "notes": "A seasoned tracker and monster hunter hired to investigate the Ashfen disappearances. Pragmatic, observant, and deeply unsettled by what they found at the survey camp."
+    },
+    "cutscene_slides": [
+      {
+        "slide_number": 1,
+        "narration": "Wyrmwood Forest was beautiful once — ancient oaks and silver birches stretching toward a sky that felt close enough to touch. Now the trees are wrong. Their bark has turned the color of a bruise, weeping black sap that smells of iron and old earth. The canopy above filters the light into something sickly and green, and the silence is absolute. Nothing sings here anymore.",
+        "image_prompt": "dark corrupted forest with black-barked trees weeping dark sap, sickly green filtered light through dead canopy, fog at ground level, grimdark eldritch atmosphere, cinematic wide shot, 8k, horror fantasy",
+        "camera_motion": "kenburns-zoom-in"
+      },
+      {
+        "slide_number": 2,
+        "narration": "The survey camp sits in a clearing that the rot has not yet claimed — but it is close. Tents stand half-collapsed, equipment scattered as if abandoned mid-task. And at the center, arranged with terrible deliberateness, the bodies of the survey team form a perfect spiral around a stone that pulses with a faint, rhythmic light. Someone — or something — wanted them found like this.",
+        "image_prompt": "abandoned survey camp in a dark forest clearing, collapsed tents, scattered equipment, bodies arranged in a spiral pattern around a glowing ancient stone, ominous green light, grimdark horror, cinematic overhead shot, 8k",
+        "camera_motion": "kenburns-pan-right"
+      },
+      {
+        "slide_number": 3,
+        "narration": "Deep beneath the roots, deeper than any mine or crypt, something shifts. The earth trembles — not from an earthquake, but from breath. Ancient, slow, vast breath. The Slumbering Wyrm has not woken in three hundred years. But its dreams are bleeding upward through the soil, through the roots, through the rot. And it has begun to dream of hunger.",
+        "image_prompt": "underground cavern deep beneath a forest, enormous ancient dragon coiled in slumber surrounded by glowing runes and roots, scale of creature dwarfing the cave, eldritch atmosphere, cinematic low angle shot, 8k, dark fantasy",
+        "camera_motion": "kenburns-tilt-up"
+      }
+    ]
+  },
+  {
+    "id": "red_bastion",
+    "title": "The Red Bastion of Oakhaven",
+    "tagline": "Blood, iron, and the price of freedom.",
+    "tone": "Grimdark Blood-and-Iron Gladiatorial",
+    "default_voice": "am_fenrir",
+    "initial_prose": "The Red Bastion was built to break people. Its walls are stained the color of its name — not from paint, but from decades of blood soaked into the stone. Warlord Kael Draveth rules Oakhaven from its highest tower, and his rule is simple: fight, win, and serve, or fight, lose, and feed the crows. You have been fighting for three years. You have won forty-seven bouts. You have watched friends die in the sand and enemies die by your hand, and you have learned that the crowd's roar is the loneliest sound in the world. But something has changed. The other gladiators are talking — in whispers, in the dark, between the bars of their cells. They are talking about a revolt. And they are looking at you to lead it.",
+    "starting_lore": [
+      {
+        "name": "Warlord Kael Draveth",
+        "category": "NPC",
+        "keywords": ["draveth", "warlord", "kael", "tyrant", "lord", "ruler", "oakhaven"],
+        "content": "The iron-fisted ruler of Oakhaven who built the Red Bastion as both a prison and an entertainment complex. Ruthless, tactically brilliant, and utterly without mercy. He views gladiators as investments, not people — until they stop winning."
+      },
+      {
+        "name": "The Red Bastion",
+        "category": "Location",
+        "keywords": ["bastion", "red bastion", "arena", "prison", "gladiator pit", "cells"],
+        "content": "A massive fortified arena-prison complex in the heart of Oakhaven. The lower levels are cells and training pits; the upper levels are luxury viewing galleries for the warlord's guests. The walls are stained red from decades of combat."
+      },
+      {
+        "name": "The Oakhaven Revolt",
+        "category": "Faction",
+        "keywords": ["revolt", "rebellion", "uprising", "gladiators", "freedom", "resistance"],
+        "content": "A nascent gladiator uprising forming in the cells of the Red Bastion. Led by whispers and desperation, the rebels need a champion — someone the other fighters will follow into the most dangerous gamble of their lives."
+      },
+      {
+        "name": "The Iron Collar",
+        "category": "Relic",
+        "keywords": ["collar", "iron collar", "slave mark", "binding", "control rune"],
+        "content": "A magical iron collar worn by all gladiators in the Red Bastion. It delivers a painful shock if the wearer attempts to leave the arena grounds without authorization. Removing it requires either the Warlord's key or a skilled enchanter — both equally difficult to obtain."
+      }
+    ],
+    "default_character": {
+      "name": "Vorn",
+      "character_class": "Ironclad Paladin",
+      "hp": 30,
+      "max_hp": 30,
+      "stats": { "STR": 17, "DEX": 11, "CON": 16, "INT": 10, "WIS": 12, "CHA": 14 },
+      "inventory": ["Gladiator's Shortsword", "Cracked Shield", "Iron Collar (cursed)", "Ration x2", "Rebel's Cipher Note"],
+      "notes": "A veteran gladiator with 47 wins and a reputation for surviving the impossible. Three years in the Bastion have hardened them into something the other prisoners trust — and the Warlord fears."
+    },
+    "cutscene_slides": [
+      {
+        "slide_number": 1,
+        "narration": "Oakhaven was once a free city — merchants, craftsmen, families living under open skies. That was before Kael Draveth marched his mercenary army through the gates and decided that freedom was a luxury the city could no longer afford. Now the Red Bastion dominates the skyline, its towers casting long shadows over streets that have learned to keep their heads down and their voices low.",
+        "image_prompt": "oppressive medieval city dominated by a massive red-stained fortress, dark overcast sky, citizens in poverty on cobblestone streets, mercenary soldiers patrolling, grimdark atmosphere, cinematic wide establishing shot, 8k",
+        "camera_motion": "kenburns-zoom-in"
+      },
+      {
+        "slide_number": 2,
+        "narration": "The arena floor is sand and blood and the roar of a crowd that has forgotten what it means to feel anything but hunger for spectacle. You have stood here forty-seven times. You have bled here. You have killed here. And every time the gates open and the crowd screams your name, you feel the iron collar tighten — a reminder that the cheers belong to Draveth, not to you.",
+        "image_prompt": "gladiatorial arena with blood-stained sand, roaring crowd in stone galleries, a lone armored gladiator standing victorious, iron collar visible at neck, torchlight and dramatic shadows, grimdark fantasy, cinematic shot, 8k",
+        "camera_motion": "kenburns-pan-right"
+      },
+      {
+        "slide_number": 3,
+        "narration": "In the dark of the cells, when the guards have made their last rounds and the torches burn low, the whispers begin. Names passed from hand to hand like contraband. A plan taking shape in the spaces between despair and fury. They are looking at you — the one who has survived everything the Bastion has thrown at them. The question is not whether you will fight. The question is whether you will fight for yourself, or for all of them.",
+        "image_prompt": "dark prison cells beneath an arena, gladiators huddled in shadows whispering, a single torch casting dramatic light, faces showing determination and desperation, grimdark atmosphere, cinematic close shot, 8k",
+        "camera_motion": "kenburns-tilt-up"
+      }
+    ]
+  }
+]
