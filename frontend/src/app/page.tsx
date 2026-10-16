@@ -27,6 +27,7 @@ interface Turn {
   dice_roll: string;
   voice_used: string;
   acting_character_id: number | null;
+  video_url: string | null;
   animate_status: string | null;
 }
 
@@ -127,7 +128,7 @@ export default function Home() {
   const [lastRoll, setLastRoll] = useState<{ stat: string; d20: number; modifier: number; total: number } | null>(null);
 
   // Animate scene state
-  const [animatingTurns, setAnimatingTurns] = useState<Record<number, string>>({});
+  const [animateError, setAnimateError] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -193,6 +194,19 @@ export default function Home() {
     fetchLorebook(currentSessionId);
   }, [fetchSessions, fetchHistory, fetchParty, fetchLorebook, currentSessionId]);
 
+  // Poll history while any cinematic render is in flight (queued / processing)
+  const hasActiveRender = history.some(
+    (t) => t.animate_status === "queued" || t.animate_status === "processing"
+  );
+  useEffect(() => {
+    if (!hasActiveRender) return;
+    const interval = setInterval(() => {
+      fetchHistory(currentSessionId);
+      fetchSessions(); // keeps token count in sync (e.g. refund on failure)
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [hasActiveRender, currentSessionId, fetchHistory, fetchSessions]);
+
   useEffect(() => {
     const s = sessions.find((x) => x.id === currentSessionId);
     if (s) setCinematicTokens(s.cinematic_tokens ?? 3);
@@ -235,7 +249,7 @@ export default function Home() {
     setSuggestedActions([]);
     setLastRoll(null);
     setShowCampaigns(false);
-    setAnimatingTurns({});
+    setAnimateError(null);
   };
 
   const createCampaign = async () => {
@@ -372,19 +386,35 @@ export default function Home() {
 
   // ── Animate Scene ────────────────────────────────────────────────────────────
 
+  const setTurnAnimateStatus = (turnId: number, status: string | null) => {
+    setHistory((prev) =>
+      prev.map((t) => (t.id === turnId ? { ...t, animate_status: status } : t))
+    );
+  };
+
   const animateScene = async (turnId: number) => {
     if (cinematicTokens <= 0) return;
-    const cur = animatingTurns[turnId];
+    const turn = history.find((t) => t.id === turnId);
+    const cur = turn?.animate_status;
     if (cur === "queued" || cur === "processing" || cur === "done") return;
 
-    setAnimatingTurns((prev) => ({ ...prev, [turnId]: "queued" }));
+    setAnimateError(null);
+    setTurnAnimateStatus(turnId, "queued"); // optimistic
     try {
       const res = await fetch(`${API}/api/turn/animate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session_id: currentSessionId, turn_id: turnId }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // Server rejected the request (no FAL_KEY, no tokens, etc.) — no token was spent
+        setTurnAnimateStatus(turnId, cur ?? null);
+        setAnimateError(
+          typeof data.detail === "string" ? data.detail : "Could not start cinematic animation."
+        );
+        return;
+      }
       if (typeof data.tokens_remaining === "number") {
         setCinematicTokens(data.tokens_remaining);
         setSessions((prev) =>
@@ -393,14 +423,11 @@ export default function Home() {
           )
         );
       }
-      setAnimatingTurns((prev) => ({ ...prev, [turnId]: data.status ?? "queued" }));
+      setTurnAnimateStatus(turnId, data.status ?? "queued");
     } catch (err) {
       console.error("Failed to animate scene:", err);
-      setAnimatingTurns((prev) => {
-        const next = { ...prev };
-        delete next[turnId];
-        return next;
-      });
+      setTurnAnimateStatus(turnId, cur ?? null);
+      setAnimateError("Could not reach the server to start the animation.");
     }
   };
 
@@ -410,6 +437,23 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-neutral-950 text-neutral-200 flex flex-col items-center justify-center p-3 font-sans relative">
+
+      {/* ── Animate error toast ── */}
+      {animateError && (
+        <div
+          role="alert"
+          className="fixed top-3 left-1/2 -translate-x-1/2 z-[100] max-w-md bg-red-950/90 border border-red-700 text-red-200 text-xs px-4 py-2 rounded-lg shadow-xl flex items-start gap-3"
+        >
+          <span>⚠️ {animateError}</span>
+          <button
+            onClick={() => setAnimateError(null)}
+            className="text-red-400 hover:text-red-200 font-bold"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* ── Prologue Overlay ── */}
       {prologueActive && (
@@ -856,7 +900,7 @@ export default function Home() {
           {history.map((turn, idx) => {
             const isLastTurn = idx === history.length - 1;
             const actor = party.find((p) => p.id === turn.acting_character_id);
-            const animStatus = animatingTurns[turn.id] || turn.animate_status;
+            const animStatus = turn.animate_status;
 
             return (
               <div key={turn.id ?? idx} className="space-y-3">
@@ -877,45 +921,72 @@ export default function Home() {
 
                 {/* DM Response Card */}
                 <div className="bg-neutral-950 border border-neutral-800 rounded-xl overflow-hidden shadow-xl">
-                  {turn.image_url && (
+                  {(turn.image_url || turn.video_url) && (
                     <div className="relative group w-full max-h-[400px] overflow-hidden border-b border-neutral-800">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={turn.image_url}
-                        alt="Scene visualization"
-                        className="w-full h-full object-cover cursor-zoom-in transition-transform duration-300 group-hover:scale-[1.02]"
-                        onClick={() => setLightboxUrl(turn.image_url)}
-                      />
+                      {turn.video_url ? (
+                        <video
+                          src={turn.video_url}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          className="w-full h-full object-cover rounded-t-xl"
+                        />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={turn.image_url ?? ""}
+                          alt="Scene visualization"
+                          className="w-full h-full object-cover cursor-zoom-in transition-transform duration-300 group-hover:scale-[1.02]"
+                          onClick={() => setLightboxUrl(turn.image_url)}
+                        />
+                      )}
+
+                      {turn.video_url && (
+                        <span className="absolute top-2 left-2 bg-purple-950/80 border border-purple-600 text-purple-200 text-[10px] px-2.5 py-1 rounded-full backdrop-blur-sm select-none">
+                          🎬 Cinematic Active
+                        </span>
+                      )}
 
                       <div className="absolute top-2 right-2 flex gap-2">
-                        <button
-                          onClick={() => setLightboxUrl(turn.image_url)}
-                          className="bg-black/60 hover:bg-black text-white text-[10px] px-2.5 py-1 rounded border border-neutral-700 backdrop-blur-sm transition-colors"
-                        >
-                          🔍 Zoom
-                        </button>
+                        {!turn.video_url && turn.image_url && (
+                          <button
+                            onClick={() => setLightboxUrl(turn.image_url)}
+                            className="bg-black/60 hover:bg-black text-white text-[10px] px-2.5 py-1 rounded border border-neutral-700 backdrop-blur-sm transition-colors"
+                          >
+                            🔍 Zoom
+                          </button>
+                        )}
 
-                        <button
-                          onClick={() => animateScene(turn.id)}
-                          disabled={cinematicTokens <= 0 || animStatus === "queued" || animStatus === "processing" || animStatus === "done"}
-                          className={`text-[10px] px-2.5 py-1 rounded border backdrop-blur-sm transition-colors flex items-center gap-1 ${
-                            animStatus === "done"
-                              ? "bg-emerald-950/70 border-emerald-700 text-emerald-300 cursor-default"
-                              : animStatus === "queued" || animStatus === "processing"
-                              ? "bg-purple-950/70 border-purple-700 text-purple-300 animate-pulse cursor-wait"
-                              : cinematicTokens > 0
-                              ? "bg-purple-950/70 hover:bg-purple-900 border-purple-600 text-purple-200"
-                              : "bg-neutral-900/70 border-neutral-700 text-neutral-500 cursor-not-allowed"
-                          }`}
-                        >
-                          {animStatus === "done"
-                            ? "✓ Animated"
-                            : animStatus === "processing"
-                            ? "🎬 Rendering..."
-                            : animStatus === "queued"
-                            ? "⏳ Queued"
-                            : `🎬 Animate Scene (${cinematicTokens} Left)`}
-                        </button>
+                        {turn.image_url && (
+                          <button
+                            onClick={() => animateScene(turn.id)}
+                            disabled={cinematicTokens <= 0 || animStatus === "queued" || animStatus === "processing" || animStatus === "done"}
+                            className={`text-[10px] px-2.5 py-1 rounded border backdrop-blur-sm transition-colors flex items-center gap-1 ${
+                              animStatus === "done"
+                                ? "bg-emerald-950/70 border-emerald-700 text-emerald-300 cursor-default"
+                                : animStatus === "queued"
+                                ? "bg-purple-950/70 border-purple-700 text-purple-300 cursor-wait"
+                                : animStatus === "processing"
+                                ? "bg-purple-950/70 border-purple-700 text-purple-300 animate-pulse cursor-wait"
+                                : animStatus === "failed"
+                                ? "bg-red-950/70 hover:bg-red-900 border-red-700 text-red-300"
+                                : cinematicTokens > 0
+                                ? "bg-purple-950/70 hover:bg-purple-900 border-purple-600 text-purple-200"
+                                : "bg-neutral-900/70 border-neutral-700 text-neutral-500 cursor-not-allowed"
+                            }`}
+                          >
+                            {animStatus === "done"
+                              ? "✓ Animated"
+                              : animStatus === "processing"
+                              ? "🎬 Rendering..."
+                              : animStatus === "queued"
+                              ? "⏳ Queued"
+                              : animStatus === "failed"
+                              ? "⚠️ Failed (Token Refunded)"
+                              : `🎬 Animate Scene (${cinematicTokens} Left)`}
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}

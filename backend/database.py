@@ -141,6 +141,7 @@ def init_db():
             image_url           TEXT,
             dice_roll           TEXT,
             voice_used          TEXT,
+            video_url           TEXT DEFAULT NULL,
             animate_status      TEXT DEFAULT NULL,
             created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(session_id) REFERENCES sessions(id)
@@ -154,6 +155,8 @@ def init_db():
         cursor.execute("ALTER TABLE turns ADD COLUMN acting_character_id INTEGER")
     if "animate_status" not in turn_cols:
         cursor.execute("ALTER TABLE turns ADD COLUMN animate_status TEXT DEFAULT NULL")
+    if "video_url" not in turn_cols:
+        cursor.execute("ALTER TABLE turns ADD COLUMN video_url TEXT DEFAULT NULL")
 
     # 4. Lorebook table (RAG memory bank)
     cursor.execute("""
@@ -502,23 +505,61 @@ def get_cinematic_tokens(session_id: int) -> int:
 
 def use_cinematic_token(session_id: int) -> int:
     """
-    Decrement cinematic_tokens by 1 (minimum 0).
+    Atomically decrement cinematic_tokens by 1 (never below 0).
     Returns the new token count after decrement.
     Raises ValueError if no tokens remain.
     """
-    current = get_cinematic_tokens(session_id)
-    if current <= 0:
-        raise ValueError("No cinematic tokens remaining for this session.")
-    new_count = max(0, current - 1)
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE sessions SET cinematic_tokens = COALESCE(cinematic_tokens, 3) - 1 "
+            "WHERE id = ? AND COALESCE(cinematic_tokens, 3) > 0",
+            (session_id,),
+        )
+        if cursor.rowcount == 0:
+            conn.rollback()
+            raise ValueError("No cinematic tokens remaining for this session.")
+        cursor.execute(
+            "SELECT cinematic_tokens FROM sessions WHERE id = ?", (session_id,)
+        )
+        new_count = cursor.fetchone()[0]
+        conn.commit()
+        return new_count
+    finally:
+        conn.close()
+
+
+def refund_cinematic_token(session_id: int) -> int:
+    """Increment cinematic_tokens by 1 (e.g. after a failed render). Returns new count."""
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE sessions SET cinematic_tokens = COALESCE(cinematic_tokens, 3) + 1 "
+            "WHERE id = ?",
+            (session_id,),
+        )
+        cursor.execute(
+            "SELECT cinematic_tokens FROM sessions WHERE id = ?", (session_id,)
+        )
+        row = cursor.fetchone()
+        conn.commit()
+        return row[0] if row and row[0] is not None else 0
+    finally:
+        conn.close()
+
+
+def update_turn_video(turn_id: int, video_url: str, status: str):
+    """Persist a completed (or failed) animation result on a turn."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE sessions SET cinematic_tokens = ? WHERE id = ?",
-        (new_count, session_id),
+        "UPDATE turns SET video_url = ?, animate_status = ? WHERE id = ?",
+        (video_url, status, turn_id),
     )
     conn.commit()
     conn.close()
-    return new_count
 
 
 def mark_turn_animate_status(turn_id: int, status: str):
@@ -554,6 +595,7 @@ def get_turn_by_id(turn_id: int) -> dict | None:
         "image_url": row["image_url"],
         "dice_roll": row["dice_roll"],
         "voice_used": row["voice_used"],
+        "video_url": row["video_url"],
         "animate_status": row["animate_status"],
     }
 
@@ -568,6 +610,8 @@ def save_turn(
     voice_used: str,
     dice_roll: str = "",
     acting_character_id: int = None,
+    video_url: str = None,
+    animate_status: str = None,
 ) -> int:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -581,11 +625,13 @@ def save_turn(
     cursor.execute("""
         INSERT INTO turns
             (session_id, turn_number, acting_character_id, player_action,
-             story_text, audio_url, image_url, voice_used, dice_roll)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             story_text, audio_url, image_url, voice_used, dice_roll,
+             video_url, animate_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         session_id, next_turn, acting_character_id, player_action,
         story_text, audio_url, image_url, voice_used, dice_roll,
+        video_url, animate_status,
     ))
 
     conn.commit()
@@ -599,7 +645,8 @@ def get_history(session_id: int = 1, limit: int = 15) -> list:
     cursor = conn.cursor()
     cursor.execute("""
         SELECT id, turn_number, acting_character_id, player_action, story_text,
-               audio_url, image_url, dice_roll, voice_used, animate_status, created_at
+               audio_url, image_url, dice_roll, voice_used, video_url,
+               animate_status, created_at
         FROM turns
         WHERE session_id = ?
         ORDER BY turn_number ASC
@@ -618,6 +665,7 @@ def get_history(session_id: int = 1, limit: int = 15) -> list:
             "image_url": row["image_url"],
             "dice_roll": row["dice_roll"],
             "voice_used": row["voice_used"],
+            "video_url": row["video_url"],
             "animate_status": row["animate_status"],
         }
         for row in rows

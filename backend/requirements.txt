@@ -7,3 +7,4 @@ soundfile==0.12.1
 numpy==1.26.2
 onnxruntime==1.16.3
 kokoro-onnx
+fal-client>=0.5.0

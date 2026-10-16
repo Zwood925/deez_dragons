@@ -8,6 +8,9 @@ from contextlib import asynccontextmanager
 from kokoro_onnx import Kokoro
 import soundfile as sf
 import requests
+import fal_client
+import asyncio
+import logging
 import json
 import base64
 import uuid
@@ -33,16 +36,28 @@ from database import (
     delete_session,
     get_cinematic_tokens,
     use_cinematic_token,
+    refund_cinematic_token,
     mark_turn_animate_status,
+    update_turn_video,
     get_turn_by_id,
 )
 
 load_dotenv()
 
+logger = logging.getLogger("deez_dragons")
+
 STATIC_AUDIO_DIR = os.path.join("static", "audio")
 STATIC_IMAGE_DIR = os.path.join("static", "images")
+STATIC_VIDEO_DIR = os.path.join("static", "videos")
 os.makedirs(STATIC_AUDIO_DIR, exist_ok=True)
 os.makedirs(STATIC_IMAGE_DIR, exist_ok=True)
+os.makedirs(STATIC_VIDEO_DIR, exist_ok=True)
+
+# fal.ai cloud video generation (reads FAL_KEY from env; fal_client picks it up automatically)
+FAL_KEY = os.getenv("FAL_KEY")
+FAL_VIDEO_MODEL = os.getenv("FAL_VIDEO_MODEL", "fal-ai/ltx-video/image-to-video")
+# Strong references to in-flight background tasks so they aren't garbage collected
+_animate_tasks: set = set()
 
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
 MODEL_PATH = os.path.join(MODELS_DIR, "kokoro-v1.0.onnx")
@@ -399,14 +414,92 @@ async def fetch_history(session_id: int = 1):
     return {"turns": get_history(session_id=session_id)}
 
 
+def _local_image_path(image_url: Optional[str]) -> Optional[str]:
+    """Resolve a stored image URL to its file on disk (None if unavailable)."""
+    if not image_url:
+        return None
+    filename = os.path.basename(image_url.split("?")[0])
+    if not filename:
+        return None
+    path = os.path.join(STATIC_IMAGE_DIR, filename)
+    return path if os.path.isfile(path) else None
+
+
+def _build_motion_prompt(turn: dict) -> str:
+    """Derive a cinematographic motion prompt from the turn's action / story."""
+    action = (turn.get("player_action") or "").strip()
+    story = (turn.get("story_text") or "").strip()
+    scene = action or story[:160]
+    base = (
+        "Cinematic slow camera dolly, atmospheric subtle motion, drifting mist and "
+        "flickering firelight, gentle parallax, high fantasy, dark romantic mood"
+    )
+    return f"{base}. Scene: {scene}"[:480]
+
+
+def _run_fal_video_job(image_path: str, prompt: str, dest_path: str) -> None:
+    """Blocking fal.ai job: upload, generate, download. Runs in a worker thread."""
+    image_url = fal_client.upload_file(image_path)
+    result = fal_client.subscribe(
+        FAL_VIDEO_MODEL,
+        arguments={"image_url": image_url, "prompt": prompt},
+        with_logs=False,
+    )
+    video_info = (result or {}).get("video") or {}
+    remote_url = video_info.get("url")
+    if not remote_url:
+        raise RuntimeError(f"fal.ai returned no video URL: {result}")
+
+    tmp_path = dest_path + ".part"
+    with requests.get(remote_url, stream=True, timeout=120) as r:
+        r.raise_for_status()
+        with open(tmp_path, "wb") as f:
+            for chunk in r.iter_content(chunk_size=1024 * 256):
+                if chunk:
+                    f.write(chunk)
+    os.replace(tmp_path, dest_path)
+
+
+async def _animate_worker(session_id: int, turn_id: int, image_path: str, prompt: str):
+    """Background pipeline: processing -> fal.ai -> save mp4 -> done / failed+refund."""
+    filename = f"{session_id}_{turn_id}.mp4"
+    dest_path = os.path.join(STATIC_VIDEO_DIR, filename)
+    try:
+        mark_turn_animate_status(turn_id, "processing")
+        await asyncio.to_thread(_run_fal_video_job, image_path, prompt, dest_path)
+        public_url = f"{API_HOST_PREFIX}/static/videos/{filename}"
+        update_turn_video(turn_id, public_url, "done")
+        print(f"🎬 Turn {turn_id} animation complete: {public_url}")
+    except Exception as e:
+        logger.exception("fal.ai animation failed for turn %s", turn_id)
+        print(f"⚠️ Animation failed for turn {turn_id}: {e}")
+        try:
+            refund_cinematic_token(session_id)
+        except Exception as refund_err:
+            print(f"⚠️ Token refund failed for session {session_id}: {refund_err}")
+        mark_turn_animate_status(turn_id, "failed")
+        for leftover in (dest_path, dest_path + ".part"):
+            try:
+                if os.path.exists(leftover):
+                    os.remove(leftover)
+            except OSError:
+                pass
+
+
 @app.post("/api/turn/animate")
 async def animate_turn(req: AnimateTurnPayload):
     """
     Queue a cinematic animation for a specific turn card.
-    Decrements 1 cinematic token from the session.
-    Marks the turn as 'queued' for animation processing.
-    Returns status, tokens_remaining, and estimated_seconds.
+    Decrements 1 cinematic token, marks the turn 'queued', and launches a
+    background fal.ai image-to-video job. Poll /api/history for progress.
     """
+    # Fail gracefully (no token spent) if the fal.ai key isn't configured
+    if not (FAL_KEY or "").strip():
+        raise HTTPException(
+            status_code=503,
+            detail="Cinematic animation is unavailable: FAL_KEY is not configured on the server.",
+        )
+
     # Verify the turn exists and belongs to this session
     turn = get_turn_by_id(req.turn_id)
     if turn is None:
@@ -414,11 +507,19 @@ async def animate_turn(req: AnimateTurnPayload):
     if turn["session_id"] != req.session_id:
         raise HTTPException(status_code=403, detail="Turn does not belong to this session.")
 
-    # Check if already queued/animated
+    # Check if already queued/animated (failed turns may be retried)
     if turn.get("animate_status") in ("queued", "processing", "done"):
         raise HTTPException(
             status_code=409,
             detail=f"Turn is already in animate state: {turn['animate_status']}",
+        )
+
+    # Need a source image on disk
+    image_path = _local_image_path(turn.get("image_url"))
+    if image_path is None:
+        raise HTTPException(
+            status_code=400,
+            detail="This turn has no local scene image to animate.",
         )
 
     # Decrement token
@@ -427,8 +528,13 @@ async def animate_turn(req: AnimateTurnPayload):
     except ValueError as e:
         raise HTTPException(status_code=402, detail=str(e))
 
-    # Mark turn as queued
+    # Mark turn as queued and launch the background job
     mark_turn_animate_status(req.turn_id, "queued")
+    task = asyncio.create_task(
+        _animate_worker(req.session_id, req.turn_id, image_path, _build_motion_prompt(turn))
+    )
+    _animate_tasks.add(task)
+    task.add_done_callback(_animate_tasks.discard)
 
     return {
         "status": "queued",
